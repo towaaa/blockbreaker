@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ブロック崩し</title>
+    <style>
+        body{
+            padding: 0;
+            margin: 0;
+        }
+        h1{
+            margin-left: 10%;
+        }
+        canvas {
+            background: #eee;
+            display: block;
+            margin: 10% auto;
+        }
+        .button{
+            margin: 0 5%;
+            padding: .2rem 1rem;
+            background-color: red;
+            color: whitesmoke;
+            text-align: center;
+            cursor: pointer;
+            font-size: 2rem;
+            border-radius: 20%;
+        }
+        .button:hover{
+            background-color: rgb(209, 0, 0);
+        }
+        .buttons{
+            text-align: center;
+        }
+        .arrows{
+            text-align: center;
+            margin-bottom: 5%;
+        }
+        .arrow{
+            margin: 5%;
+            width: 15vw;
+            height: 7vh;
+            font-size: 200%;
+            border-radius: 10%;
+        }
+        .site{
+            width: 80%;
+            margin: 10vh 10% 0 10%;
+        }
+        p{
+            margin-bottom: 0;
+        }
+        
+    </style>
+</head>
+<body>
+    <h1>ブロック崩し</h1>
+    <canvas id="canvas" width="650" height="480"></canvas>
+    <div id="result"></div>
+    <!-- <div class="arrows">
+        <input type="button" value="←" id="arrow_left" class="arrow" onclick="Arrow('left')">
+        <input type="button" value="→" id="arrow_right" class="arrow" onclick="Arrow('right')">
+    </div> -->
+    <div class="buttons">
+        <input type="button" value="start" class="button" id="start" onclick="disabled = true, start()">
+        <input type="button" value="stop" class="button" onclick="stop(interval), getElementById('start').disabled = false">
+        <input type="button" value="reset" class="button" onclick="init(interval), getElementById('start').disabled = false">
+    </div>
+    <div class="site">
+        <p>参考サイト</p>
+        <a href="https://techacademy.jp/magazine/30043">TECH ACADEMY JavaScriptでブロック崩しを作成する方法を現役エンジニアが解説【初心者向け】</a>
+
+    </div>
+    <script>
+        let canvas = document.getElementById("canvas");
+        let ctx = canvas.getContext("2d");
+
+        /********************
+         ボールの設定
+        ********************/
+        const BALL_COLOR = 'skyblue'; //ボールの色
+        const BALL_RADIUS = 7; //ボールの大きさ（半径）
+        let ballX = Math.floor(Math.random()*canvas.width); //ゲーム開始時のX軸（←→）の位置
+        let ballY = canvas.height - 30; //ゲーム開始時のY軸（↑↓）の位置
+        let xMove = 2;  //X方向への移動量
+        let yMove = -2;  //Y方向への移動量
+
+        
+        /********************
+         操作する板の設定
+         ********************/
+        const BAR_COLOR = 'blue'; //板の色
+        const BAR_HEIGHT = 10;  //板の高さ
+        const BAR_WIDTH = 75; //板の幅
+        let barX = (canvas.width - BAR_WIDTH) / 2; // 板の初期位置
+        // キーの入力
+        let rigthKeyFlag = false;
+        let leftKeyFlag = false;
+        
+        /********************
+         ブロックの設定
+         ********************/
+        const BLOCK_COLOR = 'orange'
+        const BLOCK_ROW_COUNT = 5; //ブロックの縦の数
+        const BLOCK_COLUMN_COUNT = 7; //ブロックの横の数
+        const BLOCK_WIDTH = 75; //ブロックの幅
+        const BLOCK_HEIGHT = 20; //ブロックの高さ
+        const BLOCK_MARGIN = 10; //ブロックとブロックの隙間
+        const BLOCK_AREA_MARGIN = 30; //ブロックを並べる領域と画面の隙間
+        let blockArray = []; //配置したブロック位置の配列
+        // それぞれのブロックの位置情報
+        for(let row = 0; row < BLOCK_ROW_COUNT; row++){
+            for(let column = 0; column < BLOCK_COLUMN_COUNT; column++){                
+                blockArray.push( {
+                    x : BLOCK_AREA_MARGIN + BLOCK_MARGIN * column + BLOCK_WIDTH * column,
+                    y : BLOCK_AREA_MARGIN + BLOCK_MARGIN * row +  BLOCK_HEIGHT * row
+                } );
+            }
+        }
+        
+        // ボールの描画
+        function drawBall() {
+            ballX += xMove;
+            ballY += yMove;
+            ctx.beginPath();
+            // (X軸の値、Y軸の値、円のサイズ（半径）、円を書き始める角度、円を書き終わる角度)
+            ctx.arc(ballX, ballY, BALL_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = BALL_COLOR;
+            ctx.fill();
+            ctx.closePath();
+            if (ballX + xMove > canvas.width - BALL_RADIUS || ballX + xMove < BALL_RADIUS) {
+                xMove = -xMove;
+            }
+            if (ballY + yMove < BALL_RADIUS) {
+                yMove = -yMove;
+            }else if (ballY + yMove > canvas.height - BALL_RADIUS) {
+                if (ballX > barX && ballX < barX + BAR_WIDTH) {
+                    yMove = -yMove;
+                    } else {
+                            // console.log("ゲームオーバー");
+                            clearInterval(interval);
+                            // alert("YOU LOSE")
+                }
+            }
+        }
+
+        function drawBlock() {
+            blockArray = blockArray.filter( (block, index) => {
+                if (ballX + BALL_RADIUS > block.x && ballX - BALL_RADIUS < block.x + BLOCK_WIDTH && ballY + BALL_RADIUS > block.y && ballY - BALL_RADIUS < block.y + BLOCK_HEIGHT) {
+                    if(ballX - xMove - BALL_RADIUS < block.x || ballX - xMove + BALL_RADIUS > block.x + BLOCK_WIDTH) xMove *= -1;
+                    else yMove *= -1;
+                }else{
+                    return block;
+                }
+            });
+            if(blockArray.length === 0){
+                // console.log('ゲームクリア');
+                clearInterval();
+                // alert("YOU WIN!!")
+                // return;
+            }
+            blockArray.forEach((block) => {
+                ctx.beginPath();
+                ctx.rect(block.x, block.y, BLOCK_WIDTH, BLOCK_HEIGHT);
+                ctx.fillStyle = BLOCK_COLOR;
+                ctx.fill();
+                ctx.closePath();
+            });
+        }
+        
+        function drawBar() {
+            if (rigthKeyFlag && barX < canvas.width - BAR_WIDTH) {
+                barX += 7;
+            } else if (leftKeyFlag && barX > 0) {
+                barX -= 7;
+            }
+            ctx.beginPath();
+            ctx.rect(barX, canvas.height - BAR_HEIGHT, BAR_WIDTH, BAR_HEIGHT);
+            ctx.fillStyle = BAR_COLOR;
+            ctx.fill();
+            ctx.closePath();
+        }
+        
+        function keyDownHandler(e) {
+            if (e.key == "Right" || e.key == "ArrowRight") {
+                rigthKeyFlag = true;
+            } else if (e.key == "Left" || e.key == "ArrowLeft") {
+                leftKeyFlag = true;
+            }
+        }
+        
+        function keyUpHandler(e) {
+            if (e.key == "Right" || e.key == "ArrowRight") {
+                rigthKeyFlag = false;
+            } else if (e.key == "Left" || e.key == "ArrowLeft") {
+                leftKeyFlag = false;
+            }
+        }
+
+        function Arrow (e){
+            if(e == "right") rightKeyFlag = true;
+            else if(e == "left") leftKeyFlag = true;
+        }
+        
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBall();
+            drawBlock();
+            drawBar();
+        }
+        
+        let interval = null;
+        function start(){
+            interval = setInterval(draw, 10);
+        }
+        
+        function stop(interval){
+            clearInterval(interval);
+        }
+        
+        function init(interval){
+            ballX = Math.floor(Math.random()*canvas.width); //ゲーム開始時のX軸（←→）の位置
+            ballY = canvas.height - 30; //ゲーム開始時のY軸（↑↓）の位置
+            xMove = 2;  //X方向への移動量
+            yMove = -2;  //Y方向への移動量
+
+            barX = (canvas.width - BAR_WIDTH) / 2; // 板の初期位置
+
+            for(let row = 0; row < BLOCK_ROW_COUNT; row++){
+                for(let column = 0; column < BLOCK_COLUMN_COUNT; column++){                
+                    blockArray.push( {
+                        x : BLOCK_AREA_MARGIN + BLOCK_MARGIN * column + BLOCK_WIDTH * column,
+                        y : BLOCK_AREA_MARGIN + BLOCK_MARGIN * row +  BLOCK_HEIGHT * row
+                    } );
+                }
+            }
+            stop(interval);
+            draw();
+        }
+        
+        document.addEventListener("keydown", keyDownHandler);
+        document.addEventListener("keyup", keyUpHandler);
+
+        draw();
+
+    </script>
+</body>
+</html>
